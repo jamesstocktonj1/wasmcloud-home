@@ -8,6 +8,7 @@ services:
       - 4222:4222
       - 4223:4223
       - 6222:6222
+      - 7422:7422
       - 8222:8222
     volumes:
       - ./config/environment/nats.conf:/nats.conf
