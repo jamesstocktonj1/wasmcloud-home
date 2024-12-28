@@ -2,6 +2,7 @@ services:
 # nats
   nats:
     image: nats:latest
+    restart: unless-stopped
     command: -c /nats.conf --server_name nats
     ports:
       - 4222:4222
@@ -12,18 +13,18 @@ services:
 
 # wasmcloud
   wadm:
-    depends_on:
-      - nats
     image: ghcr.io/wasmcloud/wadm:latest
+    restart: unless-stopped
     environment:
       - WADM_NATS_SERVER=nats
       - WADM_TRACING_ENABLED=true
       - WADM_TRACING_ENDPOINT=http://otelcol:4318/v1/traces
-
-  wasmcloud:
     depends_on:
       - nats
+
+  wasmcloud:
     image: ghcr.io/wasmcloud/wasmcloud:1.4.2
+    restart: unless-stopped
     environment:
       - WASMCLOUD_LOG_LEVEL=debug
       - WASMCLOUD_RPC_HOST=nats
@@ -34,10 +35,13 @@ services:
       - TRANSIT_XKEY_SEED=${TRANSIT_XKEY_SEED}
       - WASMCLOUD_LABEL_hostname=samba-share
       - WASMCLOUD_LABEL_zone=av-0
+    depends_on:
+      - nats
     
 # telemetry
   otelcol:
     image: otel/opentelemetry-collector-contrib:latest
+    restart: unless-stopped
     command: --config=/etc/otelcol/config.yaml
     ports:
       - 4317:4317
@@ -53,6 +57,7 @@ services:
   # logs
   elasticsearch:
     image: elasticsearch:7.9.1
+    restart: unless-stopped
     ports:
       - 9200:9200
       - 9300:9300
@@ -70,6 +75,7 @@ services:
 
   logstash:
     image: logstash:7.9.1
+    restart: unless-stopped
     ports:
       - 5044:5044
       - 9600:9600
@@ -82,6 +88,7 @@ services:
 
   kibana:
     image: kibana:7.9.1
+    restart: unless-stopped
     ports:
       - 5601:5601
     volumes:
@@ -93,6 +100,7 @@ services:
   # traces
   jaeger:
     image: jaegertracing/all-in-one:latest
+    restart: unless-stopped
     ports:
       - 16686:16686
     environment:
@@ -102,6 +110,7 @@ services:
   # metrics
   prometheus:
     image: prom/prometheus:latest
+    restart: unless-stopped
     command: --config.file=/etc/prometheus/config.yaml
     ports:
       - 9095:9090
@@ -112,6 +121,7 @@ services:
 
   nats-observe:
     image: natsio/prometheus-nats-exporter:latest
+    restart: unless-stopped
     command: -connz -connz_detailed -accstatz -routez -varz -jsz=all http://nats:8222
     ports:
       - 7777:7777
@@ -120,6 +130,7 @@ services:
 
   grafana:
     image: grafana/grafana
+    restart: unless-stopped
     ports:
       - 3000:3000
     volumes:
