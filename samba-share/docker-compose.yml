@@ -34,8 +34,6 @@ services:
       - TRANSIT_XKEY_SEED=${TRANSIT_XKEY_SEED}
       - WASMCLOUD_LABEL_hostname=samba-share
       - WASMCLOUD_LABEL_zone=av-0
-    ports:
-      - 8080:8080
     
 # telemetry
   otelcol:
