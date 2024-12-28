@@ -1,0 +1,15 @@
+services:
+  wasmcloud:
+    image: ghcr.io/wasmcloud/wasmcloud:1.4.2
+    environment:
+      - WASMCLOUD_LOG_LEVEL=debug
+      - WASMCLOUD_RPC_HOST=192.168.0.105
+      - WASMCLOUD_CTL_HOST=192.168.0.105
+      - WASMCLOUD_OBSERVABILITY_ENABLED=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://192.168.0.105:4318
+      - ENCRYPTION_XKEY_SEED=${ENCRYPTION_XKEY_SEED}
+      - TRANSIT_XKEY_SEED=${TRANSIT_XKEY_SEED}
+      - WASMCLOUD_LABEL_hostname=${WASM_HOSTNAME}
+      - WASMCLOUD_LABEL_zone=${ZONE}
+    ports:
+      - 8080:8080
