@@ -3,7 +3,6 @@ services:
     image: ghcr.io/wasmcloud/wasmcloud:1.4.2
     restart: unless-stopped
     environment:
-      - WASMCLOUD_LOG_LEVEL=debug
       - WASMCLOUD_RPC_HOST=192.168.0.105
       - WASMCLOUD_CTL_HOST=192.168.0.105
       - WASMCLOUD_OBSERVABILITY_ENABLED=true
