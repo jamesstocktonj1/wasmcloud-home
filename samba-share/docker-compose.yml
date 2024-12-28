@@ -1,0 +1,130 @@
+services:
+# nats
+  nats:
+    image: nats:latest
+    command: -c /nats.conf --server_name nats
+    ports:
+      - 4222:4222
+      - 6222:6222
+      - 8222:8222
+    volumes:
+      - ./config/environment/nats.conf:/nats.conf
+
+# wasmcloud
+  wadm:
+    depends_on:
+      - nats
+    image: ghcr.io/wasmcloud/wadm:latest
+    environment:
+      - WADM_NATS_SERVER=nats
+      - WADM_TRACING_ENABLED=true
+      - WADM_TRACING_ENDPOINT=http://otelcol:4318/v1/traces
+
+  wasmcloud:
+    depends_on:
+      - nats
+    image: ghcr.io/wasmcloud/wasmcloud:1.4.2
+    environment:
+      - WASMCLOUD_LOG_LEVEL=debug
+      - WASMCLOUD_RPC_HOST=nats
+      - WASMCLOUD_CTL_HOST=nats
+      - WASMCLOUD_OBSERVABILITY_ENABLED=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4318
+      - ENCRYPTION_XKEY_SEED=${ENCRYPTION_XKEY_SEED}
+      - TRANSIT_XKEY_SEED=${TRANSIT_XKEY_SEED}
+      - WASMCLOUD_LABEL_hostname=samba-share
+      - WASMCLOUD_LABEL_zone=av-0
+    ports:
+      - 8080:8080
+    
+# telemetry
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: --config=/etc/otelcol/config.yaml
+    ports:
+      - 4317:4317
+      - 4318:4318
+      - 9090:9090
+    volumes:
+      - ./config/telemetry/otel.yaml:/etc/otelcol/config.yaml
+    depends_on:
+      - elasticsearch
+      - logstash
+      - jaeger
+
+  # logs
+  elasticsearch:
+    image: elasticsearch:7.9.1
+    ports:
+      - 9200:9200
+      - 9300:9300
+    volumes:
+      - ./observe/elasticsearch:/usr/share/elasticsearch/data/
+      - ./config/telemetry/elasticsearch.yaml:/usr/share/elasticsearch/config/elasticsearch.yml
+    environment:
+      - discovery.type=single-node
+      - http.host=0.0.0.0
+      - transport.host=0.0.0.0
+      - xpack.security.enabled=false
+      - xpack.monitoring.enabled=false
+      - cluster.name=elasticsearch
+      - bootstrap.memory_lock=true
+
+  logstash:
+    image: logstash:7.9.1
+    ports:
+      - 5044:5044
+      - 9600:9600
+    volumes:
+      - ./config/telemetry/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ./config/telemetry/logstash.yaml:/usr/share/logstash/config/logstash.yml
+      - ./observe/logstash:/usr/share/logstash/data
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    image: kibana:7.9.1
+    ports:
+      - 5601:5601
+    volumes:
+      - ./config/telemetry/kibana.yaml:/usr/share/kibana/config/kibana.yml
+      - ./observe/kibana:/usr/share/kibana/data
+    depends_on:
+      - elasticsearch
+
+  # traces
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - 16686:16686
+    environment:
+      - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+      - COLLECTOR_OTLP_ENABLED=true
+
+  # metrics
+  prometheus:
+    image: prom/prometheus:latest
+    command: --config.file=/etc/prometheus/config.yaml
+    ports:
+      - 9095:9090
+    volumes:
+      - ./config/telemetry/prometheus.yaml:/etc/prometheus/config.yaml
+    depends_on:
+      - otelcol
+
+  nats-observe:
+    image: natsio/prometheus-nats-exporter:latest
+    command: -connz -connz_detailed -accstatz -routez -varz -jsz=all http://nats:8222
+    ports:
+      - 7777:7777
+    depends_on:
+      - nats
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - 3000:3000
+    volumes:
+      - ./config/telemetry/grafana:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
