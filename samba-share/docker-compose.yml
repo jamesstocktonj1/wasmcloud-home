@@ -135,6 +135,7 @@ services:
     restart: unless-stopped
     environment:
       - NATS_URL=nats://nats
+      - OTEL_ENDPOINT=http://otelcol:4318
     depends_on:
       - nats
     
