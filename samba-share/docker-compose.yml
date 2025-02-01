@@ -130,6 +130,14 @@ services:
     depends_on:
       - nats
 
+  wasmbus-observe:
+    image: ghcr.io/jamesstocktonj1/wasmbus-exporter:main
+    restart: unless-stopped
+    environment:
+      - NATS_URL=nats://nats
+    depends_on:
+      - nats
+    
   grafana:
     image: grafana/grafana
     restart: unless-stopped
